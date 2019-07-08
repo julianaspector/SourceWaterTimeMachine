@@ -13,8 +13,12 @@ shinyServer(
     map  <- addPolygons(map, data=areas, popup=areas$pwsid)
     map  <- addMarkers(map,data=points, lng=~Longitude, lat=~Latitude, popup=points$WSF.Name)
     map
-    
+    }
+  )
 
+  output<-observeEvent(input$resetPWSID, {
+    reset("pwsid")
     })
   }
 )
+  
