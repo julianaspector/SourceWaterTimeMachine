@@ -1,0 +1,1 @@
+https://trackingcalifornia.org:443/geoserver/ows?service=wfs&version=1.1.0&request=GetFeature&typeName=water:service_areas&srsName=epsg:4326&cql_filter=(is_complete%20=%20%27true%27%20AND%20is_current%20=%20%27true%27)&outputFormat=shape-zip
