@@ -37,11 +37,11 @@ shinyServer(
     # this produces a pie chart with proportions of water produced from 
     # SW, GW, or delivered from another PWS
     output$pie_chart <- renderPlot({
-      # removes error message and replaces it with a helpful message
-      #validate(
-        #need(input$pwsid != "", "Please select a PWSID in Maps tab.")
-        #)
       sb <- subset(production_data, PWSID==input$pwsid & Date==sliderMonth$Month)
+      # this provides a helpful message if production data is not available for selected date
+      validate(
+        need(!is.empty(sb$Date), 'No data available for this date.')
+      )
       fields <- c("Groundwater", "Surface Water", "Delivered Water")
       pie_data <- data.frame(
         field=factor(fields[c(1,2,3)], levels=fields),
@@ -61,6 +61,8 @@ shinyServer(
                   color="white",
                   position = position_stack(vjust = 0.5))+labs(fill="Water Type")+
         ggtitle("Produced and Delivered Water Fractions (2013-2016)")
+
+
     })
     # show map
     output$map <- renderLeaflet({
@@ -84,4 +86,3 @@ shinyServer(
   })
   }
 )
-
