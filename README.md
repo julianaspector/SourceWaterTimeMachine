@@ -7,6 +7,7 @@ The State Water Board’s Division of Drinking Water (DDW) regulates approximate
 This app allows users to locate PWS on a map and determine the source water locations, availability, and type. DDW classifies water source types as either wells (for groundwater) or intake facilities (for surface water). The classifications for source water availability are in the table below:
 
 Source Availability | Value
+--- | ---
 Emergency | E
 Interim | I
 Other | O
