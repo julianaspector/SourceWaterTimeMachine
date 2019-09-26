@@ -3,21 +3,32 @@ library(leaflet)
 library(shinyjs)
 library(sf)
 library(rmapshaper)
+library(plyr)
 library(dplyr)
 library(ggplot2)
 library(scales)
 library(spatstat)
+library(forcats)
 
 setwd("C:/Users/JSpector/Documents/")
 
 # Get dataset (public water system service areas) from shapefile
-serviceAreas <- read_sf(dsn="~/Source Water Time Machine/Service_Areas_2019_07_09/service_areas.shp",layer="service_areas")
+serviceAreas <- read_sf(dsn="~/Source Water Time Machine/Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
 # Get source point data from CSV
 sourcePoints <- read.csv("~/Source Water Time Machine/20190619 DDW Source Points.csv")
+sourcePoints$join_ID <- paste0(sourcePoints$PWS.ID,"-",sourcePoints$State.Asgn.ID)
+sourcePoints$join_ID <- gsub('[CA]', '', sourcePoints$join_ID)
 
-# remove any source point data that has NA in rows
-sourcePoints <- na.omit(sourcePoints)
+# Get additional source point status and type location from EDF library CSV
+add_sourcePoints <- read.csv("~/Source Water Time Machine/sitelocations_20190915.csv")
+
+# join source point information
+add_sourcePoints$SYSTEM_NO <- paste0("CA0", add_sourcePoints$SYSTEM_NO)
+add_sourcePoints <- add_sourcePoints %>% rename("join_ID"="PRI_STA_C")
+sourcePoints <- full_join(sourcePoints, add_sourcePoints, by="join_ID")
+sourcePoints <- sourcePoints %>% drop_na("Latitude")
+
 
 # determine common PWSIDs between service areas and source points
 com_id <- intersect(serviceAreas$pwsid, sourcePoints$PWS.ID)
@@ -33,11 +44,67 @@ counties <- unique(as.vector(serviceAreas$d_prin_cnt))
 counties <- sort(counties)
 
 # Bring in source point key values
-facility_keys <- read.csv("~/Source Water Time Machine/Water_Source_Facilities.csv")
+water_type_keys <- read.csv("~/Source Water Time Machine/Water_Facility_Types.csv")
 availability_keys <- read.csv("~/Source Water Time Machine/Availability.csv")
 
-sourcePoints <- select(sourcePoints, -c(Activity.Status, PWS.Type, Activity.Status2))
 
+abandoned <- sourcePoints %>%
+  filter(STATUS =='AB')
+abandoned$Level <- "Abandoned"
+
+destroyed <- sourcePoints %>% 
+  filter(STATUS == 'DS')
+destroyed$Level <- 'Destroyed'
+
+inactive <- sourcePoints %>%
+  filter(STATUS == 'IR' | STATUS == 'IT' | STATUS == 'IU')
+inactive$Level <- 'Inactive'
+
+standby <- sourcePoints %>%
+  filter(STATUS == 'SR' | STATUS == 'ST'| STATUS == 'SU')
+standby$Level <- 'Standby'
+
+active <- sourcePoints %>%
+  filter(STATUS == 'AR' | STATUS == 'AT' | STATUS == 'AU')
+active$Level <- 'Active'
+
+agriculture <- sourcePoints %>%
+  filter(STATUS == 'AG')
+agriculture$Level <- 'Agriculture/Irrigation'
+
+distribution <- sourcePoints %>%
+  filter(STATUS == 'DT' | STATUS == 'DR')
+distribution$Level <- 'Distribution'
+
+combined <- sourcePoints %>%
+  filter(STATUS == 'CT' | STATUS == 'CU' | STATUS == 'CR' | STATUS == 'CM')
+combined$Level <- 'Combined'
+
+purchased <- sourcePoints %>%
+  filter(STATUS == 'PT')
+purchased$Level <- 'Purchased'
+
+unknown <- sourcePoints %>%
+  filter(is.na(STATUS))
+unknown$Level <- 'Unknown'
+
+
+sourcePoints <- rbind(abandoned, destroyed, inactive, standby, active, agriculture, distribution, combined, purchased, unknown)
+
+sourcePoints <- select(sourcePoints, -c(PWS.Type,
+                                        Activity.Status,
+                                        Activity.Status2,
+                                        State.Asgn.ID,
+                                        FRDS_NO,
+                                        COUNTY,
+                                        DISTRICT,
+                                        USER_ID,
+                                        STATION_TY,
+                                        COMMENT_1,
+                                        SOURCE_NAM,
+                                        PWS.Name,
+                                        join_ID,
+                                        WATER_TYPE))
 # bring in production data
 production_data <- read.csv("~/Source Water Time Machine/EAR 2013-2016 PRODUCTION FINAL 06-22-2018.csv")
 production_data$Date <- as.Date(production_data$Date)
@@ -62,8 +129,6 @@ monthStart <- function(x) {
   x$mday <- 1
   as.Date(x)
 }
-
-
 # Make leaflet map, with basemap
 map<-leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
   htmlwidgets::onRender("function(el, x) {
@@ -78,7 +143,7 @@ map<-leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
 ui<-fluidPage(
   useShinyjs(),
   titlePanel("California Public Water Systems Source Locations and Information"),
-  sidebarPanel("The State Water Board's Division of Drinking Water (DDW) regulates approximately 7,500 public water systems (PWS) in California. A PWS is defined as a system that provides drinking water for human consumption to 15 or more connections or regularly serves 25 or more people daily for at least 60 days out of the year. The DDW allocates permits for PWS, and collects an annual report from each system.",
+  sidebarPanel("The State Water Board's Division of Drinking Water (DDW) regulates approximately 7,500 public water systems (PWS) in California. A PWS is defined as a system that provides drinking water for human consumption to 15 or more connections or regularly serves 25 or more people daily for at least 60 days out of the year. The DDW allocates permits for PWS and collects an annual report from each system.",
                br(),
                br(),
                tags$b("How to use this app:"), 
@@ -95,14 +160,14 @@ ui<-fluidPage(
                br(),
                br(),
                fluidRow(
-                 column(6, offset=1, tableOutput('tbl_facilities')),
+                 column(6, offset=1, tableOutput('tbl_types')),
                  column(6, offset=1, tableOutput('tbl_availability'))
                ),
                br(),
                tags$b("Data Sources:"),
                br(),
                br(),
-               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 7/9/2019 from https://www.trackingcalifornia.water",
+               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water",
                br(),
                br(),
                "Division of Drinking Water Source Points, State Water Resources Control Board. California Integrated Water Quality System Project. Accessed 7/2/2019 from https://github.com/CAWaterBoardDataCenter/PWStoSources",
@@ -161,8 +226,8 @@ server<- function(input, output, session){
     # show source water availability key
     output$tbl_availability <- renderTable({head(availability_keys, n = 7)}, bordered=TRUE)
     # show facilties key
-    output$tbl_facilities <- renderTable({
-      head(facility_keys, n = 2)}, bordered=TRUE)
+    output$tbl_types <- renderTable({
+      head(water_type_keys, n = 2)}, bordered=TRUE)
     # this creates a table of records for select PWSID
     output$table_select <- renderTable({
       subset(sourcePoints, PWS.ID==input$pwsid)})
@@ -213,9 +278,26 @@ server<- function(input, output, session){
       # add public water system service area of interest to map
       map  <- addPolygons(map, data=areas, popup=areas$pwsid)
       # add source water points to map
-      map  <- addMarkers(map,data=points, lng=~Longitude, lat=~Latitude, popup=paste("Name:",points$WSF.Name,"<br>", "Source Availability:", points$Availability, "<br>", "Water Source Facility Type:", points$WSF.Type))
+      pal <- colorFactor(c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                         domain=c("Abandoned", "Active", "Agriculture/Irrigation",
+                                  "Combined", "Destroyed", "Distribution",
+                                  "Inactive", "Purchased",
+                                  "Standby", "Unknown"))
       # make selected pws area red
       map <- addPolygons(map, data=areas_interest, color="red")
+      
+      pal <- colorFactor(c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                         domain=c("Abandoned", "Active", "Agriculture/Irrigation",
+                                  "Combined", "Destroyed", "Distribution",
+                                  "Inactive", "Purchased",
+                                  "Standby", "Unknown"))
+      map  <- addCircles(map,data=points, lng=~Longitude, lat=~Latitude, color=~pal(Level), popup=paste("Name:",points$WSF.Name,"<br>", 
+                                                                                                        "Source Availability:", 
+                                                                                                        points$Availability, "<br>", 
+                                                                                                        "Water Source Facility Type:", 
+                                                                                                        points$WSF.Type, "<br>",
+                                                                                                        "Water Source Status:",
+                                                                                                        points$STATUS))
       map
     }
     )
