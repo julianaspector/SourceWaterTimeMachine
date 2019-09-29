@@ -3,29 +3,29 @@ library(leaflet)
 library(shinyjs)
 library(sf)
 library(rmapshaper)
-library(plyr)
 library(dplyr)
 library(ggplot2)
 library(scales)
 library(spatstat)
-library(forcats)
+library(tidyr)
 
-setwd("C:/Users/JSpector/Documents/")
+setwd("C:/Users/Jules/Desktop/Source Water Time Machine")
 
 # Get dataset (public water system service areas) from shapefile
-serviceAreas <- read_sf(dsn="~/Source Water Time Machine/Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
+serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
 # Get source point data from CSV
-sourcePoints <- read.csv("~/Source Water Time Machine/20190619 DDW Source Points.csv")
+sourcePoints <- read.csv("20190619 DDW Source Points.csv")
 sourcePoints$join_ID <- paste0(sourcePoints$PWS.ID,"-",sourcePoints$State.Asgn.ID)
 sourcePoints$join_ID <- gsub('[CA]', '', sourcePoints$join_ID)
+sourcePoints %>% mutate_at("join_ID", as.character())
 
 # Get additional source point status and type location from EDF library CSV
-add_sourcePoints <- read.csv("~/Source Water Time Machine/sitelocations_20190915.csv")
+add_sourcePoints <- read.csv("sitelocations_20190915.csv")
 
 # join source point information
 add_sourcePoints$SYSTEM_NO <- paste0("CA0", add_sourcePoints$SYSTEM_NO)
-add_sourcePoints <- add_sourcePoints %>% rename("join_ID"="PRI_STA_C")
+add_sourcePoints <- add_sourcePoints %>% rename("join_ID"="PRI_STA_C") %>% mutate_at("join_ID", as.character())
 sourcePoints <- full_join(sourcePoints, add_sourcePoints, by="join_ID")
 sourcePoints <- sourcePoints %>% drop_na("Latitude")
 
@@ -44,49 +44,59 @@ counties <- unique(as.vector(serviceAreas$d_prin_cnt))
 counties <- sort(counties)
 
 # Bring in source point key values
-water_type_keys <- read.csv("~/Source Water Time Machine/Water_Facility_Types.csv")
-availability_keys <- read.csv("~/Source Water Time Machine/Availability.csv")
+water_type_keys <- read.csv("Water_Facility_Types.csv")
+availability_keys <- read.csv("Availability.csv")
 
 
 abandoned <- sourcePoints %>%
   filter(STATUS =='AB')
 abandoned$Level <- "Abandoned"
+abandoned$Color <- "red"
 
 destroyed <- sourcePoints %>% 
   filter(STATUS == 'DS')
 destroyed$Level <- 'Destroyed'
+destroyed$Color <- "darkred"
 
 inactive <- sourcePoints %>%
   filter(STATUS == 'IR' | STATUS == 'IT' | STATUS == 'IU')
 inactive$Level <- 'Inactive'
+inactive$Color <- "orange"
 
 standby <- sourcePoints %>%
   filter(STATUS == 'SR' | STATUS == 'ST'| STATUS == 'SU')
 standby$Level <- 'Standby'
+standby$Color <- "lightgreen"
 
 active <- sourcePoints %>%
   filter(STATUS == 'AR' | STATUS == 'AT' | STATUS == 'AU')
 active$Level <- 'Active'
+active$Color <- "green"
 
 agriculture <- sourcePoints %>%
   filter(STATUS == 'AG')
 agriculture$Level <- 'Agriculture/Irrigation'
+agriculture$Color <- "lightblue"
 
 distribution <- sourcePoints %>%
   filter(STATUS == 'DT' | STATUS == 'DR')
 distribution$Level <- 'Distribution'
+distribution$Color <- "darkblue"
 
 combined <- sourcePoints %>%
   filter(STATUS == 'CT' | STATUS == 'CU' | STATUS == 'CR' | STATUS == 'CM')
 combined$Level <- 'Combined'
+combined$Color <- "purple"
 
 purchased <- sourcePoints %>%
   filter(STATUS == 'PT')
 purchased$Level <- 'Purchased'
+purchased$Color <- "darkpurple"
 
 unknown <- sourcePoints %>%
   filter(is.na(STATUS))
 unknown$Level <- 'Unknown'
+unknown$Color <- "pink"
 
 
 sourcePoints <- rbind(abandoned, destroyed, inactive, standby, active, agriculture, distribution, combined, purchased, unknown)
@@ -106,7 +116,7 @@ sourcePoints <- select(sourcePoints, -c(PWS.Type,
                                         join_ID,
                                         WATER_TYPE))
 # bring in production data
-production_data <- read.csv("~/Source Water Time Machine/EAR 2013-2016 PRODUCTION FINAL 06-22-2018.csv")
+production_data <- read.csv("EAR 2013-2016 PRODUCTION FINAL 06-22-2018.csv")
 production_data$Date <- as.Date(production_data$Date)
 # convert desired columns into usable forms
 production_data <- production_data %>%
@@ -278,32 +288,33 @@ server<- function(input, output, session){
       # add public water system service area of interest to map
       map  <- addPolygons(map, data=areas, popup=areas$pwsid)
       # add source water points to map
-      pal <- colorFactor(c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
-                         domain=c("Abandoned", "Active", "Agriculture/Irrigation",
-                                  "Combined", "Destroyed", "Distribution",
-                                  "Inactive", "Purchased",
-                                  "Standby", "Unknown"))
       # make selected pws area red
       map <- addPolygons(map, data=areas_interest, color="red")
       
-      pal <- colorFactor(c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
-                         domain=c("Abandoned", "Active", "Agriculture/Irrigation",
-                                  "Combined", "Destroyed", "Distribution",
-                                  "Inactive", "Purchased",
-                                  "Standby", "Unknown"))
-      map  <- addCircles(map,data=points, lng=~Longitude, lat=~Latitude, color=~pal(Level), popup=paste("Name:",points$WSF.Name,"<br>", 
+      
+      icons <- awesomeIcons(icon="whatever",
+                            iconColor="black",
+                            library="ion",
+                            markerColor=points$Color)
+    
+     map  <- addAwesomeMarkers(map,data=points,lng=~Longitude, lat=~Latitude, icon=icons, popup=paste("Name:",points$WSF.Name,"<br>", 
                                                                                                         "Source Availability:", 
                                                                                                         points$Availability, "<br>", 
                                                                                                         "Water Source Facility Type:", 
                                                                                                         points$WSF.Type, "<br>",
                                                                                                         "Water Source Status:",
                                                                                                         points$STATUS))
-      map
+ 
+     
+
+
+     map
     }
     )
     # reset PWSID if user hits button
     output<-observeEvent(input$resetPWSID,{
       reset("secondSelection")
+      map
     })
   }
 # Run the application 
