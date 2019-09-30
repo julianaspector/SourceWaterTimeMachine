@@ -214,13 +214,17 @@ ui<-fluidPage(
                tags$b("Data Sources:"),
                br(),
                br(),
-               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water",
+               "Division of Drinking Water Source Points, State Water Resources Control Board. Safe Drinking Water Information System. Accessed 7/2/2019 from https://github.com/CAWaterBoardDataCenter/PWStoSources",
                br(),
                br(),
-               "Division of Drinking Water Source Points, State Water Resources Control Board. California Integrated Water Quality System Project. Accessed 7/2/2019 from https://github.com/CAWaterBoardDataCenter/PWStoSources",
+               "Drinking Water Source identification number (PS Code), name, and type (SITELOC.DBF), State Water Resources Control Board. Electronic Data Transfer Library. Accessed 9/25/2019 from https://www.waterboards.ca.gov/drinking_water/certlic/drinkingwater/EDTlibrary.html",
                br(),
                br(),
-               "Electronic Annual Report, Safe Drinking Water Information System. Accessed 7/2/2019 from https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information"
+               "Electronic Annual Report, Safe Drinking Water Information System. Accessed 7/2/2019 from https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information",
+               br(),
+               br(),
+               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water"
+               
   ),
   mainPanel(
     tabsetPanel(type="tabs",
