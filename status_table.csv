@@ -1,0 +1,11 @@
+Water_Source_Status,Code
+Abandoned,AB
+Destroyed,DS
+Inactive,IR
+Standby,SR
+Active,AR
+Agriculture/Irrigation,AG
+Distribution,DT
+Combined,CT
+Purchased,PT
+Unknown,Unknown
