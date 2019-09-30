@@ -9,7 +9,8 @@ library(scales)
 library(spatstat)
 library(tidyr)
 
-setwd("C:/Users/Jules/Desktop/Source Water Time Machine")
+
+setwd("C:/Users/JSpector/Documents/Source Water Time Machine")
 
 # Get dataset (public water system service areas) from shapefile
 serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
@@ -145,10 +146,46 @@ map<-leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
                         L.control.zoom({ position: 'topright' }).addTo(this)
                         }") %>%
   # make basemap load faster
-  addProviderTiles("Esri.WorldTopoMap", options=providerTileOptions(
+  addProviderTiles("Stamen.Toner", options=providerTileOptions(
     updatewhenZooming=FALSE,
     updatesWhenIdle=TRUE
   ))
+
+# legend html generator:
+markerLegendHTML <- function(IconSet) {
+  # container div:
+  legendHtml <- "<div style='padding: 10px; padding-bottom: 10px;'>"
+  
+  n <- 1
+  # add each icon for font-awesome icons icons:
+  for (Icon in IconSet) {
+    if (Icon[["library"]] == "ion") {
+      legendHtml<- paste0(legendHtml, "<div style='width: auto; height: 35px'>",
+                          "<div style='position: relative; display: inline-block; width: 36px; height: 45px' class='awesome-marker-icon-",Icon[["markerColor"]]," awesome-marker'>",
+                          "<i style='margin-left: 8px; margin-top: 45px; 'class= 'ion ion-",Icon[["icon"]]," ion-inverse'></i>",
+                          "</div>",
+                          "<p style='position: relative; top: 12px; display: inline-block; ' >", names(IconSet)[n] ,"</p>",
+                          "</div>")    
+    }
+    n<- n + 1
+  }
+  paste0(legendHtml, "</div>")
+}
+
+IconSet <- awesomeIconList(
+  "Abandoned"   = makeAwesomeIcon(icon= 'whatever', markerColor = 'red', iconColor = 'black', library = "ion"),
+  "Destroyed" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkred', iconColor = 'black', library = "ion"),
+  "Inactive" = makeAwesomeIcon(icon= 'whatever', markerColor = 'orange', iconColor = 'black', library = "ion"),
+  "Standby" = makeAwesomeIcon(icon= 'whatever', markerColor = 'lightgreen', iconColor = 'black', library = "ion"),
+  "Active" = makeAwesomeIcon(icon= 'whatever', markerColor = 'green', iconColor = 'black', library = "ion"),
+  "Agriculture/Irrigation" = makeAwesomeIcon(icon= 'whatever', markerColor = 'lightblue', iconColor = 'black', library = "ion"),
+  "Distribution" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkblue', iconColor = 'black', library = "ion"),
+  "Combined" = makeAwesomeIcon(icon= 'whatever', markerColor = 'purple', iconColor = 'black', library = "ion"),
+  "Purchased" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkpurple', iconColor = 'black', library = "ion"),
+  "Unknown" = makeAwesomeIcon(icon= 'whatever', markerColor = 'pink', iconColor = 'black', library = "ion")
+)
+
+
 
 ui<-fluidPage(
   useShinyjs(),
@@ -190,21 +227,15 @@ ui<-fluidPage(
                 tabPanel("Map", 
                          # column widths must be between 1-12
                          fluidRow(
-                           column(width=6,
+                           column(width=12,
                                   helpText("Please select a county."),
-                                  selectInput("counties", choices=counties, label="Counties"))
+                                  selectInput("counties", choices=counties, label="Counties"), align="center")
                          ),
                          fluidRow(
                            column(width=12,
                                   helpText("Please select a Public Water System ID."),
-                                  uiOutput("secondSelection"))
+                                  uiOutput("secondSelection"), align="center")
                          ),
-                         fluidRow(
-                           column(width=12,
-                                  actionButton("resetPWSID", "Reset PWSID"))
-                         ),
-                         # add a break beneath button
-                         br(),
                          fluidRow(
                            column(width=12,
                                   leafletOutput("map"))
@@ -231,7 +262,7 @@ server<- function(input, output, session){
     # this allows the user to select a PWSID within the county of their choice
     output$secondSelection <- renderUI({
       PWSIDs <- subset(serviceAreas, serviceAreas$d_prin_cnt==input$counties)
-      selectInput("pwsid", choices = sort(PWSIDs$pwsid), label="PWSID")
+      selectInput("pwsid", selected="PWSID", choices = sort(PWSIDs$pwsid), label="PWSID")
     })
     # show source water availability key
     output$tbl_availability <- renderTable({head(availability_keys, n = 7)}, bordered=TRUE)
@@ -278,44 +309,46 @@ server<- function(input, output, session){
       
       
     })
-    # show map
-    output$map <- renderLeaflet({
-      # user chooses county of interest
-      areas <- subset(serviceAreas, d_prin_cnt == input$counties)
-      # user chooses water system of interest
-      points <- subset(sourcePoints, PWS.ID == input$pwsid)
-      areas_interest <- subset(serviceAreas, pwsid==input$pwsid)
-      # add public water system service area of interest to map
-      map  <- addPolygons(map, data=areas, popup=areas$pwsid)
-      # add source water points to map
-      # make selected pws area red
-      map <- addPolygons(map, data=areas_interest, color="red")
-      
-      
-      icons <- awesomeIcons(icon="whatever",
-                            iconColor="black",
-                            library="ion",
-                            markerColor=points$Color)
     
-     map  <- addAwesomeMarkers(map,data=points,lng=~Longitude, lat=~Latitude, icon=icons, popup=paste("Name:",points$WSF.Name,"<br>", 
+    # show map
+    areas <- reactive({
+      subset(serviceAreas, d_prin_cnt == input$counties)
+    })
+    points <- reactive({
+      subset(sourcePoints, PWS.ID == input$pwsid) 
+    })
+    areas_interest <- reactive({
+      subset(serviceAreas, pwsid==input$pwsid)
+    })
+    icons <- reactive({
+      awesomeIcons(icon="whatever",
+                  iconColor="black",
+                  library="ion",
+                  markerColor=points()$Color)
+    })
+    
+    
+    output$map <- renderLeaflet({
+      leaflet() %>% addProviderTiles(providers$Stamen.Toner) %>% addPolygons(data=areas(), popup=areas()$pwsid, color="#67a9cf")%>%
+        addPolygons(data=areas_interest(), color="#ef8a62") %>%
+        addLegend("bottomleft", colors=c("#67a9cf", "#ef8a62"), labels=c("Public Water Systems in County", "Selected Public Water System"))
+      })
+
+      
+  observe({     
+     map <- leafletProxy("map") %>%
+       clearMarkers() %>%
+       addAwesomeMarkers(data=points(),lng=~Longitude, lat=~Latitude, icon=icons(), popup=~paste("Name:", as.character(WSF.Name),"<br>", 
                                                                                                         "Source Availability:", 
-                                                                                                        points$Availability, "<br>", 
+                                                                                                        as.character(Availability), "<br>", 
                                                                                                         "Water Source Facility Type:", 
-                                                                                                        points$WSF.Type, "<br>",
+                                                                                                        as.character(WSF.Type), "<br>",
                                                                                                         "Water Source Status:",
-                                                                                                        points$STATUS))
- 
+                                                                                                        as.character(STATUS))) %>%
+       addControl(html = markerLegendHTML(IconSet = IconSet), position = "bottomright")
      
 
-
-     map
-    }
-    )
-    # reset PWSID if user hits button
-    output<-observeEvent(input$resetPWSID,{
-      reset("secondSelection")
-      map
     })
-  }
+}
 # Run the application 
 shinyApp(ui = ui, server = server)
