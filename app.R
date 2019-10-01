@@ -9,6 +9,9 @@ library(scales)
 library(spatstat)
 library(tidyr)
 
+
+setwd("C:/Users/JSpector/Documents/Source Water Time Machine")
+
 # Get dataset (public water system service areas) from shapefile
 serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
@@ -44,7 +47,6 @@ counties <- sort(counties)
 # Bring in source point key values
 water_type_keys <- read.csv("Water_Facility_Types.csv")
 availability_keys <- read.csv("Availability.csv")
-status_keys <- read.csv("status_table.csv")
 
 
 abandoned <- sourcePoints %>%
@@ -115,7 +117,7 @@ sourcePoints <- select(sourcePoints, -c(PWS.Type,
                                         join_ID,
                                         WATER_TYPE))
 # bring in production data
-production_data <- read.csv("EAR 2013-2016 PRODUCTION FINAL 06-22-2018.csv")
+production_data <- read.csv("2013-2016 Production Final.csv")
 production_data$Date <- as.Date(production_data$Date)
 # convert desired columns into usable forms
 production_data <- production_data %>%
@@ -127,10 +129,6 @@ production_data$PWSID <- trimws(production_data$PWSID, "both")
 production_data$sw_prop <- round(production_data$WATER.PRODUCED.FROM.SURFACE.WATER/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
 production_data$dw_prop <- round(production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
 production_data$gw_prop <- round(production_data$WATER.PRODUCED.FROM.GROUNDWATER/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
-
-# only work with production data relevant to PWSIDs that have source points
-com_id_production <- intersect(serviceAreas$pwsid, production_data$PWSID)
-production_data <- subset(production_data, production_data$PWSID %in% com_id_production)
 
 # this function converts date to first day of month for slider input
 monthStart <- function(x) {
@@ -205,9 +203,8 @@ ui<-fluidPage(
                br(),
                br(),
                fluidRow(
-                 column(4, offset=1, tableOutput('tbl_types')),
-                 column(4, offset=1, tableOutput('tbl_availability')),
-                 column(4, offset=1, tableOutput('tbl_status'))
+                 column(6, offset=1, tableOutput('tbl_types')),
+                 column(6, offset=1, tableOutput('tbl_availability'))
                ),
                br(),
                tags$b("Data Sources:"),
@@ -272,14 +269,9 @@ server<- function(input, output, session){
     # show facilties key
     output$tbl_types <- renderTable({
       head(water_type_keys, n = 2)}, bordered=TRUE)
-    # show status key
-    output$tbl_status <- renderTable({
-      head(status_keys, n=10)}, bordered=TRUE)
-    
     # this creates a table of records for select PWSID
     output$table_select <- renderTable({
-    table <- select(sourcePoints, -c("Color", "Latitude", "Longitude", "SYSTEM_NO"))
-      subset(table, PWS.ID==input$pwsid)})
+      subset(sourcePoints, PWS.ID==input$pwsid)})
     # allows user to select a date along slider between 2013-2016
     sliderMonth <- reactiveValues()
     observe({
