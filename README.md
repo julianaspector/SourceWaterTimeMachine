@@ -1,7 +1,7 @@
 # Source Water Time Machine: California Public Water Systems R Shiny App Documentation
 
 ## Introduction
-The State Water Board’s Division of Drinking Water (DDW) regulates approximately 7,500 public water systems (PWS) in California. A PWS is defined as a system that provides drinking water for human consumption to 15 or more connections or regularly serves 25 or more people daily for at least 60 days out of the year. The DDW allocates permits for PWS and collects an annual report from each system. More information about PWS here: https://www.waterboards.ca.gov/drinking_water/certlic/drinkingwater/documents/waterpartnerships/what_is_a_public_water_sys.pdf
+The State Water Board’s Division of Drinking Water (DDW) regulates approximately 7,500 public water systems (PWS) in California. A PWS is defined as a system that provides drinking water for human consumption to 15 or more connections or regularly serves 25 or more people daily for at least 60 days out of the year. The DDW allocates permits for PWS and collects an annual report from each system. More information about PWS [here]: (https://www.waterboards.ca.gov/drinking_water/certlic/drinkingwater/documents/waterpartnerships/what_is_a_public_water_sys.pdf)
 
 ## App Description
 This app allows users to locate PWS on a map and determine the source water locations, availability, operation status, type, and how water sources have changed over a limited subset of years (2013-2016). DDW classifies water source types as either wells (for groundwater) or intake facilities (for surface water). The classifications for source water availability are in the table below:
