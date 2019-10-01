@@ -1,299 +1,362 @@
-library(lubridate)
+#Load required libraries
 library(leaflet)
+library(shinyjs)
+library(sf)
+library(rmapshaper)
 library(dplyr)
-library(shiny)
-library(timeDate)
-library(baydeltautils)
-library(data.table)
-
-# bring in SacWAM results
-
-sacWAM_base <- read.csv("sac_wam_postprocessor_model_1_2.csv", skip=11)
-
-# convert index to machine readable date
-sacWAM_base$Index <- ymd(sacWAM_base$Index)
-
-# bring in station locations
-
-stationLoc <- read.csv("Station_Coordinates.csv")
-
-# bring in water year types table
-
-wyTypes <- read.csv("water_year_types.csv")
-
-# select relevant columns for SacWAM data and merge station location with station data
-
-FPT <- sacWAM_base %>% select(c(Index,Flow=Sacramento.River.209...SWRCB.Sac.AT.Freeport)) 
-FPT$CDEC.Station <- "FPT"
-FPT <- merge(FPT, stationLoc, by="CDEC.Station")
-
-YBY <- sacWAM_base %>% select(c(Index, Flow=Yolo.Bypass..22...Reach))
-YBY$CDEC.Station <- "YBY"
-YBY <- merge(YBY, stationLoc, by="CDEC.Station")
-
-PUT <- sacWAM_base %>% select(c(Index,Flow=Putah.Creek..21...SWRCB.Putah.Creek)) 
-PUT$CDEC.Station <- "PUT"
-PUT <- merge(PUT, stationLoc, by="CDEC.Station")
-
-CSN <- sacWAM_base %>% select(c(Index,Flow=Cosumnes.River...5...FNF.Cosumnes.at.Michigan.Bar..gauge.)) 
-CSN$CDEC.Station <- "CSN"
-CSN <- merge(CSN, stationLoc, by="CDEC.Station")
-
-DLC <- sacWAM_base %>% select(c(Index, Flow=Delta.Cross.Channel.fr.Sacramento.River.RM.030...0...Headflow)) 
-DLC$CDEC.Station <- "DLC"
-DLC <- merge(DLC, stationLoc, by="CDEC.Station")
-
-GSS <- sacWAM_base %>% select(c(Index, Flow=Georgiana.Slough.fr.Sacramento.River.RM.029...0...Headflow)) 
-GSS$CDEC.Station <- "GSS"
-GSS <- merge(GSS, stationLoc, by="CDEC.Station")
-
-WBR <- sacWAM_base %>% select(c(Index,Flow=Mokelumne.River..39...REG.Mokelumne.blw.Woodbridge)) 
-WBR$CDEC.Station <- "WBR"
-WBR <- merge(WBR, stationLoc, by="CDEC.Station")
-
-QMISC <- sacWAM_base %>% select(c(Index,Flow=Calaveras.River..29...SWRCB.Calaveras.River)) 
-QMISC$CDEC.Station <- "QMISC"
-QMISC <- merge(QMISC, stationLoc, by="CDEC.Station")
-
-IDB <- sacWAM_base %>% select(c(Index, Flow=Old.River.Pipeline...0...Headflow)) 
-IDB$CDEC.Station <- "IDB"
-IDB <- merge(IDB, stationLoc, by="CDEC.Station")                                      
-
-INB <- sacWAM_base %>% select(c(Index,Flow=Rock.Slough.Intake...0...Headflow)) 
-INB$CDEC.Station <- "INB"
-INB <- merge(INB, stationLoc, by="CDEC.Station") 
-
-WCI <- sacWAM_base %>% select(c(Index, Flow=Clifton.Court.Forebay)) 
-WCI$CDEC.Station <- "WCI"
-WCI <- merge(WCI, stationLoc, by="CDEC.Station")
-WCI <- WCI %>% mutate_at(c("Flow"), as.factor)
-
-SJR <- sacWAM_base %>% select(c(Index, Flow=San.Joaquin.River...1...Inflow.at.Vernalis.Inflow)) 
-SJR$CDEC.Station <- "SJR"
-SJR <- merge(SJR, stationLoc, by="CDEC.Station")
-
-BKS <- sacWAM_base %>% select(c(Index, Flow=North.Bay.Aqueduct...0...Headflow))
-BKS$CDEC.Station <- "BKS"
-BKS <- merge(BKS, stationLoc, by="CDEC.Station")
-BKS <- BKS %>% mutate_at(c("Flow"), as.factor)
-
-TRP <- sacWAM_base %>% select(c(Index, Flow=Delta.SOD.Export))
-TRP$CDEC.Station <- "TRP"
-TRP <- merge(TRP, stationLoc, by="CDEC.Station")
-TRP <- TRP %>% mutate_at(c("Flow"), as.factor)
-
-# separate data into imports and exports
-
-data <- rbind(FPT, YBY, PUT, CSN, DLC, GSS, WBR, QMISC, SJR, IDB, INB, WCI)
-imports <- rbind(FPT, YBY, PUT, CSN, DLC, GSS, WBR, QMISC, SJR)
-exports <- rbind(IDB, INB, WCI, BKS, TRP)
+library(ggplot2)
+library(scales)
+library(spatstat)
+library(tidyr)
 
 
-imports <- imports %>% mutate_at (c("Flow"), as.numeric)
-imports <- imports %>% mutate_at (c("Name"), as.character)
+# Get public water system service areas from shapefile
+serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
-exports <- exports %>% mutate_at (c("Flow"), as.numeric)
-exports <- exports %>% mutate_at (c("Name"), as.character)
+# Get source point data
+sourcePoints <- read.csv("20190619 DDW Source Points.csv")
+sourcePoints$join_ID <- paste0(sourcePoints$PWS.ID,"-",sourcePoints$State.Asgn.ID)
+sourcePoints$join_ID <- gsub('[CA]', '', sourcePoints$join_ID)
+sourcePoints %>% mutate_at("join_ID", as.character())
 
-data <- data %>% mutate_at (c("Flow"), as.numeric)
+# Get additional source point status and type location from EDF library
+add_sourcePoints <- read.csv("sitelocations_20190915.csv")
 
-imports$Units <- "TAF"
-exports$Units <- "TAF"
-
-imports$Label <- "Delta Imports"
-exports$Label <- "Delta Exports"
-
-
-imports$WY <- waterYear(imports$Index)
-exports$WY <- waterYear(exports$Index)
-data$WY <- waterYear(data$Index)
-
-# combine imports and exports for accessing later
-imports_exports <- rbind(imports, exports)
-
-data <- merge(data, wyTypes, by="WY")
-imports <- merge(imports, wyTypes, by="WY")
-exports <- merge(exports, wyTypes, by="WY")
-imports_exports <- merge(imports_exports, wyTypes, by="WY")
-
-# determin min and max dates for each slider bar
-data_dt <- data.table::data.table(data)
-
-data_maxDate <- data_dt[,max(Index.x), by=WYT]
-data_maxDate <- setorder(data_maxDate, WYT)
-data_minDate <- data_dt[,min(Index.x), by=WYT]
-data_minDate <- setorder(data_minDate, WYT)
-
-# set wyTypes to be integers for indices and numeric for WY
-wyTypes <- wyTypes %>% select(c("WY", "WYT"))
+# join source point information
+add_sourcePoints$SYSTEM_NO <- paste0("CA0", add_sourcePoints$SYSTEM_NO)
+add_sourcePoints <- add_sourcePoints %>% rename("join_ID"="PRI_STA_C") %>% mutate_at("join_ID", as.character())
+sourcePoints <- full_join(sourcePoints, add_sourcePoints, by="join_ID")
+sourcePoints <- sourcePoints %>% drop_na("Latitude")
 
 
-# names of sliders
+# determine common PWSIDs between service areas and source points
+com_id <- intersect(serviceAreas$pwsid, sourcePoints$PWS.ID)
 
-xAxisGroup <- c("Water Year Type 1", "Water Year Type 2", "Water Year Type 3", "Water Year Type 4", "Water Year Type 5")
+# take a subset of service area data for common PWSIDs
+serviceAreas <- subset(serviceAreas, serviceAreas$pwsid %in% com_id)
+
+# simplify shapefile so loads faster
+serviceAreas <- ms_simplify(serviceAreas, keep=0.07, method="dp")
+
+# Create a vector of county names
+counties <- unique(as.vector(serviceAreas$d_prin_cnt))
+counties <- sort(counties)
+
+# Bring in source point key values
+water_type_keys <- read.csv("Water_Facility_Types.csv")
+availability_keys <- read.csv("Availability.csv")
+status_keys <- read.csv("status_table.csv")
+
+# create levels based on source water operation statuses
+abandoned <- sourcePoints %>%
+  filter(STATUS =='AB')
+abandoned$Level <- "Abandoned"
+abandoned$Color <- "red"
+
+destroyed <- sourcePoints %>% 
+  filter(STATUS == 'DS')
+destroyed$Level <- 'Destroyed'
+destroyed$Color <- "darkred"
+
+inactive <- sourcePoints %>%
+  filter(STATUS == 'IR' | STATUS == 'IT' | STATUS == 'IU')
+inactive$Level <- 'Inactive'
+inactive$Color <- "orange"
+
+standby <- sourcePoints %>%
+  filter(STATUS == 'SR' | STATUS == 'ST'| STATUS == 'SU')
+standby$Level <- 'Standby'
+standby$Color <- "lightgreen"
+
+active <- sourcePoints %>%
+  filter(STATUS == 'AR' | STATUS == 'AT' | STATUS == 'AU')
+active$Level <- 'Active'
+active$Color <- "green"
+
+agriculture <- sourcePoints %>%
+  filter(STATUS == 'AG')
+agriculture$Level <- 'Agriculture/Irrigation'
+agriculture$Color <- "lightblue"
+
+distribution <- sourcePoints %>%
+  filter(STATUS == 'DT' | STATUS == 'DR')
+distribution$Level <- 'Distribution'
+distribution$Color <- "darkblue"
+
+combined <- sourcePoints %>%
+  filter(STATUS == 'CT' | STATUS == 'CU' | STATUS == 'CR' | STATUS == 'CM')
+combined$Level <- 'Combined'
+combined$Color <- "purple"
+
+purchased <- sourcePoints %>%
+  filter(STATUS == 'PT')
+purchased$Level <- 'Purchased'
+purchased$Color <- "darkpurple"
+
+unknown <- sourcePoints %>%
+  filter(is.na(STATUS))
+unknown$Level <- 'Unknown'
+unknown$Color <- "pink"
 
 
-# create match table
-WY_match <- data.table(WYT=c(1, 2, 3, 4, 5), Description=c("Wet", "Above Normal", "Below Normal", "Dry", "Critical"))
+sourcePoints <- rbind(abandoned, destroyed, inactive, standby, active, agriculture, distribution, combined, purchased, unknown)
 
-wyTypes <- merge(WY_match, wyTypes, by="WYT")
+# hide columns
+sourcePoints <- select(sourcePoints, -c(PWS.Type,
+                                        Activity.Status,
+                                        Activity.Status2,
+                                        State.Asgn.ID,
+                                        FRDS_NO,
+                                        COUNTY,
+                                        DISTRICT,
+                                        USER_ID,
+                                        STATION_TY,
+                                        COMMENT_1,
+                                        SOURCE_NAM,
+                                        PWS.Name,
+                                        join_ID,
+                                        WATER_TYPE))
+# bring in production data
+production_data <- read.csv("2013-2016 Production Final.csv")
+production_data$Date <- as.Date(production_data$Date)
+# convert desired columns into usable forms
+production_data <- production_data %>%
+  mutate_at(c("WATER.PRODUCED.FROM.GROUNDWATER", "WATER.PRODUCED.FROM.SURFACE.WATER","FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM"), as.numeric)%>%
+  mutate_at(c("PWSID"), as.character)
+# remove white space before and after PWSID
+production_data$PWSID <- trimws(production_data$PWSID, "both")
+# convert proportions
+production_data$sw_prop <- round(production_data$WATER.PRODUCED.FROM.SURFACE.WATER/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
+production_data$dw_prop <- round(production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
+production_data$gw_prop <- round(production_data$WATER.PRODUCED.FROM.GROUNDWATER/(production_data$WATER.PRODUCED.FROM.GROUNDWATER+production_data$WATER.PRODUCED.FROM.SURFACE.WATER+production_data$FINSIHIED.WATER.PURCHASED.OR.RECEIVED.FROM.ANOTHER.PUBLIC.WATER.SYSTEM), digits=2)
 
-# rearrange columns
-wyTypes <- wyTypes %>%
-  select(-WYT, -Description, everything())
+# this function converts date to first day of month for slider input
+monthStart <- function(x) {
+  x <- as.POSIXlt(x)
+  x$mday <- 1
+  as.Date(x)
+}
+# Make leaflet map, with basemap
+map<-leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
+  htmlwidgets::onRender("function(el, x) {
+                        L.control.zoom({ position: 'topright' }).addTo(this)
+                        }") %>%
+  # make basemap load faster
+  addProviderTiles("Stamen.Toner", options=providerTileOptions(
+    updatewhenZooming=FALSE,
+    updatesWhenIdle=TRUE
+  ))
 
-# sort by year
+# legend html generator:
+markerLegendHTML <- function(IconSet) {
+  # container div:
+  legendHtml <- "<div style='padding: 10px; padding-bottom: 10px;'>"
+  
+  n <- 1
+  # add each icon for font-awesome icons icons:
+  for (Icon in IconSet) {
+    if (Icon[["library"]] == "ion") {
+      legendHtml<- paste0(legendHtml, "<div style='width: auto; height: 35px'>",
+                          "<div style='position: relative; display: inline-block; width: 36px; height: 45px' class='awesome-marker-icon-",Icon[["markerColor"]]," awesome-marker'>",
+                          "<i style='margin-left: 8px; margin-top: 45px; 'class= 'ion ion-",Icon[["icon"]]," ion-inverse'></i>",
+                          "</div>",
+                          "<p style='position: relative; top: 12px; display: inline-block; ' >", names(IconSet)[n] ,"</p>",
+                          "</div>")    
+    }
+    n<- n + 1
+  }
+  paste0(legendHtml, "</div>")
+}
 
-wyTypes <- wyTypes[order(WY),]
+IconSet <- awesomeIconList(
+  "Abandoned"   = makeAwesomeIcon(icon= 'whatever', markerColor = 'red', iconColor = 'black', library = "ion"),
+  "Destroyed" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkred', iconColor = 'black', library = "ion"),
+  "Inactive" = makeAwesomeIcon(icon= 'whatever', markerColor = 'orange', iconColor = 'black', library = "ion"),
+  "Standby" = makeAwesomeIcon(icon= 'whatever', markerColor = 'lightgreen', iconColor = 'black', library = "ion"),
+  "Active" = makeAwesomeIcon(icon= 'whatever', markerColor = 'green', iconColor = 'black', library = "ion"),
+  "Agriculture/Irrigation" = makeAwesomeIcon(icon= 'whatever', markerColor = 'lightblue', iconColor = 'black', library = "ion"),
+  "Distribution" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkblue', iconColor = 'black', library = "ion"),
+  "Combined" = makeAwesomeIcon(icon= 'whatever', markerColor = 'purple', iconColor = 'black', library = "ion"),
+  "Purchased" = makeAwesomeIcon(icon= 'whatever', markerColor = 'darkpurple', iconColor = 'black', library = "ion"),
+  "Unknown" = makeAwesomeIcon(icon= 'whatever', markerColor = 'pink', iconColor = 'black', library = "ion")
+)
 
-# divide water year types into two groups for tables
-wyTypes_one <- wyTypes[1:47,]
-wyTypes_two <- wyTypes[48:94,]
 
-ui <- fluidPage(
-  tabsetPanel(
-    tabPanel(title="Maps",
-             titlePanel("Sacramento/San Joaquin Delta Water Imports and Exports"),
-             sidebarLayout(
-               sidebarPanel(
-                 uiOutput("sliders")),
-               mainPanel(
-                 fluidRow(
-                   column(4, leafletOutput("map_one")),
-                   column(4, leafletOutput("map_two")),
-                   column(4, leafletOutput("map_three"))),
-                 fluidRow(
-                   column(6, leafletOutput("map_four")),
-                   column(6, leafletOutput("map_five")))
-               )
-             )
-    ),
-    tabPanel(title="Water Year Information",
-             fluidRow(
-               column(4, tableOutput("table_one")),
-               column(4, tableOutput("table_two")),
-               column(4, tableOutput("table_three")),
-               column(4, tableOutput("table_four"))
-             )
+
+ui<-fluidPage(
+  useShinyjs(),
+  titlePanel("California Public Water Systems Source Locations and Information"),
+  sidebarPanel("The State Water Board's Division of Drinking Water (DDW) regulates approximately 7,500 public water systems (PWS) in California. A PWS is defined as a system that provides drinking water for human consumption to 15 or more connections or regularly serves 25 or more people daily for at least 60 days out of the year. The DDW allocates permits for PWS and collects an annual report from each system.",
+               br(),
+               br(),
+               tags$b("How to use this app:"), 
+               br(),
+               "1) Select a county of interest to zoom map into relevant area.",
+               br(),
+               "2) Click on public water system area to see Public Water System ID.",
+               br(),
+               "3) Select a Public Water System ID of interest.",
+               br(),
+               "4) Click on pins to see name of water source(s), water source availability, and water source facility type. The same information is available in tabular format in the Table tab.",
+               br(),
+               "5) The Graphs tab shows how the water source composition (relative fractions of groundwater, surface water, and delivered water) changed between 2013-2016.",
+               br(),
+               br(),
+               fluidRow(
+                 column(6, offset=1, tableOutput('tbl_types')),
+                 column(6, offset=1, tableOutput('tbl_availability'))
+               ),
+               fluidRow(
+                 column(12, tableOutput('tbl_status'))
+               ),
+               br(),
+               tags$b("Data Sources:"),
+               br(),
+               br(),
+               "Division of Drinking Water Source Points, State Water Resources Control Board. Safe Drinking Water Information System. Accessed 7/2/2019 from https://github.com/CAWaterBoardDataCenter/PWStoSources",
+               br(),
+               br(),
+               "Drinking Water Source identification number (PS Code), name, and type (SITELOC.DBF), State Water Resources Control Board. Electronic Data Transfer Library. Accessed 9/25/2019 from https://www.waterboards.ca.gov/drinking_water/certlic/drinkingwater/EDTlibrary.html",
+               br(),
+               br(),
+               "Electronic Annual Report, Safe Drinking Water Information System. Accessed 7/2/2019 from https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information",
+               br(),
+               br(),
+               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water"
+               
+  ),
+  mainPanel(
+    tabsetPanel(type="tabs",
+                tabPanel("Map", 
+                         # column widths must be between 1-12
+                         fluidRow(
+                           column(width=12,
+                                  helpText("Please select a county."),
+                                  selectInput("counties", choices=counties, label="Counties"), align="center")
+                         ),
+                         fluidRow(
+                           column(width=12,
+                                  helpText("Please select a Public Water System ID."),
+                                  uiOutput("secondSelection"), align="center")
+                         ),
+                         fluidRow(
+                           column(width=12,
+                                  leafletOutput("map"))
+                         )
+                ),
+                tabPanel("Table", tableOutput("table_select")),
+                tabPanel("Graphs", 
+                         fluidRow(
+                           column(12, sliderInput("date", "Date:", min=as.Date("2013-01-31"), max=as.Date("2016-12-31"),value=as.Date("2014-12-01"), timeFormat="%b %Y"),
+                                  textOutput("SliderText"))
+                         ),
+                         fluidRow(
+                           column(12, plotOutput("pie_chart"))
+                         )
+                )
     )
   )
 )
 
 
-server<-function(input,output,session){
-  
-  #Render the sliders
-  output$sliders <- renderUI({
-    # First, create a list of sliders each with a different name
-    sliders <- lapply(1:length(xAxisGroup), function(i) {
-      inputName <- xAxisGroup[i]
-      sliderInput(inputName, inputName, min=as.Date(data_minDate$V1[i]), max=as.Date(data_maxDate$V1[i]), value=as.Date(data_minDate$V1[i]), timeFormat="%b %Y")
+
+# add data to map
+server<- function(input, output, session){
+    # this allows the user to select a PWSID within the county of their choice
+    output$secondSelection <- renderUI({
+      PWSIDs <- subset(serviceAreas, serviceAreas$d_prin_cnt==input$counties)
+      selectInput("pwsid", selected="PWSID", choices = sort(PWSIDs$pwsid), label="PWSID")
     })
-    # Create a tagList of sliders (this is important)
-    do.call(tagList, sliders)
-  })
-  
-  # subset the data based on user choice
-  dataInput_one <- reactive({
-    imports_exports[imports_exports$Index.x==as.character(timeLastDayInMonth(input$"Water Year Type 1")) & imports_exports$WYT== 1,]
-  })
-  dataInput_two <- reactive({
-    imports_exports[imports_exports$Index.x==as.character(timeLastDayInMonth(input$"Water Year Type 2")) & imports_exports$WYT== 2,]
-  })
-  dataInput_three <- reactive({
-    imports_exports[imports_exports$Index.x==as.character(timeLastDayInMonth(input$"Water Year Type 3")) & imports_exports$WYT== 3,]
-  })
-  dataInput_four <- reactive({
-    imports_exports[imports_exports$Index.x==as.character(timeLastDayInMonth(input$"Water Year Type 4")) & imports_exports$WYT== 4,]
-  })
-  dataInput_five <- reactive({
-    imports_exports[imports_exports$Index.x==as.character(timeLastDayInMonth(input$"Water Year Type 5")) & imports_exports$WYT== 5,]
-  })
-  
-  # render basemap and legend for each water year type (static)
-  
-  output$map_one <- renderLeaflet({
-    leaflet(data) %>% addTiles() %>%
-      fitBounds(~min(Long),~min(Lat), ~max(Long), ~max(Lat))%>%
-      addLegend(data=dataInput_one(),"topright", colors=c("#67a9cf", "#ef8a62"), labels=unique((imports_exports$Label)), title="Water Year Type 1")
-  })
-  
-  output$map_two <- renderLeaflet({
-    leaflet(data) %>% addTiles() %>%
-      fitBounds(~min(Long),~min(Lat), ~max(Long), ~max(Lat)) %>%
-      addLegend(data=dataInput_two(),"topright", colors=c("#67a9cf", "#ef8a62"), labels=unique((imports_exports$Label)), title="Water Year Type 2")
-  })
-  
-  output$map_three <- renderLeaflet({
-    leaflet(data) %>% addTiles() %>%
-      fitBounds(~min(Long),~min(Lat), ~max(Long), ~max(Lat)) %>%
-      addLegend(data=dataInput_three(),"topright", colors=c("#67a9cf", "#ef8a62"), labels=unique((imports_exports$Label)), title="Water Year Type 3")
-  })
-  output$map_four <- renderLeaflet({
-    leaflet(data) %>% addTiles() %>%
-      fitBounds(~min(Long),~min(Lat), ~max(Long), ~max(Lat)) %>%
-      addLegend(data=dataInput_four(),"topright", colors=c("#67a9cf", "#ef8a62"), labels=unique((imports_exports$Label)), title="Water Year Type 4")
-  })
-  output$map_five <- renderLeaflet({
-    leaflet(data) %>% addTiles() %>%
-      fitBounds(~min(Long),~min(Lat), ~max(Long), ~max(Lat)) %>%
-      addLegend(data=dataInput_five(),"topright", colors=c("#67a9cf", "#ef8a62"), labels=unique((imports_exports$Label)), title="Water Year Type 5")
-  })
-  
-  # color palette for maps
-  pal <- colorFactor(palette=c("#ef8a62", "#67a9cf"), levels=sort(imports_exports$Label))
-  
-  # interactive data for maps
-  observe({
-    map<-leafletProxy("map_one")%>%
-      clearShapes() %>%
-      addCircles(data=dataInput_one(), radius=~Flow*2, color=~pal(Label), popup=~paste("Station Name:",as.character(Name),
-                                                                                       "<br>", "Flow:", as.character(Flow), "<br>", "Units:", as.character(Units)))
-  })
-  
-  observe({
-    map<-leafletProxy("map_two")%>%
-      clearShapes() %>%
-      addCircles(data=dataInput_two(), radius=~Flow*2, color=~pal(Label), popup=~paste("Station Name:",as.character(Name),
-                                                                                       "<br>", "Flow:", as.character(Flow),
-                                                                                       "<br>", "Units:", as.character(Units)))
-  })
-  observe({
-    map<-leafletProxy("map_three")%>%
-      clearShapes() %>%
-      addCircles(data=dataInput_three(), radius=~Flow*2, color=~pal(Label), popup=~paste("Station Name:",as.character(Name),
-                                                                                         "<br>", "Flow:", as.character(Flow),
-                                                                                         "<br>", "Units:", as.character(Units)))  
-  })
-  observe({
-    map<-leafletProxy("map_four")%>%
-      clearShapes() %>%
-      addCircles(data=dataInput_four(), radius=~Flow*2, color=~pal(Label), popup=~paste("Station Name:",as.character(Name),
-                                                                                        "<br>", "Flow:", as.character(Flow),
-                                                                                        "<br>", "Units:", as.character(Units)))
-  })
-  observe({
-    map<-leafletProxy("map_five")%>%
-      clearShapes() %>%
-      addCircles(data=dataInput_five(), radius=~Flow*2, color=~pal(Label), popup=~paste("Station Name:",as.character(Name),
-                                                                                        "<br>", "Flow:", as.character(Flow),
-                                                                                        "<br>", "Units:", as.character(Units)))
+    # show source water availability key
+    output$tbl_availability <- renderTable({head(availability_keys, n = 7)}, bordered=TRUE)
+    # show facilties key
+    output$tbl_types <- renderTable({
+      head(water_type_keys, n = 2)}, bordered=TRUE)
+    # show status key
+    output$tbl_status <- renderTable({
+      head(status_keys, n=10)}, bordered=TRUE)
     
-  })
-  
-  output$table_one <- renderTable({
-    head(wyTypes_one, n = 23)}, bordered=TRUE, digits=0)
-  
-  output$table_two <- renderTable({
-    tail(wyTypes_one, n = -23)}, bordered=TRUE, digits=0)
-  
-  output$table_three <- renderTable({
-    head(wyTypes_two, n = 23)}, bordered=TRUE, digits=0)
-  
-  output$table_four <- renderTable({
-    tail(wyTypes_two, n = -23)}, bordered=TRUE, digits=0)
-  
+    # this creates a table of records for select PWSID
+    output$table_select <- renderTable({
+      tb <- select(sourcePoints, -c("Color", "Latitude", "Longitude", "SYSTEM_NO"))
+      subset(tb, PWS.ID==input$pwsid)})
+    # allows user to select a date along slider between 2013-2016
+    sliderMonth <- reactiveValues()
+    observe({
+      full.date <- as.POSIXct(input$date, tz="GMT")
+      sliderMonth$Month <- as.character(monthStart(full.date))
+    })
+    output$SliderText <- renderText({sliderMonth$Month})
+    # this produces a pie chart with proportions of water produced from 
+    # SW, GW, or delivered from another PWS
+    output$pie_chart <- renderPlot({
+      sb <- subset(production_data, PWSID==input$pwsid & Date==sliderMonth$Month)
+      # this provides a helpful message if production data is not available for selected date
+      validate(
+        need(!is.empty(sb$Date), 'No data available for this date.')
+      )
+      fields <- c("Groundwater", "Surface Water", "Delivered Water")
+      pie_data <- data.frame(
+        field=factor(fields[c(1,2,3)], levels=fields),
+        proportions=(c(sb$gw_prop, sb$sw_prop, sb$dw_prop)))
+      ggplot(pie_data, aes(x = "", y=proportions, fill = factor(field))) + 
+        theme(axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              panel.grid  = element_blank(),
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank())+
+        geom_bar(width = 1, stat="identity")+
+        geom_col(width=1)+
+        coord_polar(theta = "y", direction=-1)+
+        # remove proportions = 0% and label percentages to ones place accuracy
+        geom_text(data=subset(pie_data, proportions != 0), aes(label=percent(proportions, accuracy=1)), 
+                  size=5,
+                  color="white",
+                  position = position_stack(vjust = 0.5))+labs(fill="Water Type")+
+        ggtitle("Produced and Delivered Water Fractions (2013-2016)")
+      
+      
+    })
+    
+    # show map
+    areas <- reactive({
+      subset(serviceAreas, d_prin_cnt == input$counties)
+    })
+    points <- reactive({
+      subset(sourcePoints, PWS.ID == input$pwsid) 
+    })
+    areas_interest <- reactive({
+      subset(serviceAreas, pwsid==input$pwsid)
+    })
+    icons <- reactive({
+      awesomeIcons(icon="whatever",
+                  iconColor="black",
+                  library="ion",
+                  markerColor=points()$Color)
+    })
+    
+    
+    output$map <- renderLeaflet({
+      leaflet() %>% addProviderTiles(providers$Stamen.Toner) %>% addPolygons(data=areas(), popup=areas()$pwsid, color="#67a9cf")%>%
+        addPolygons(data=areas_interest(), color="#ef8a62") %>%
+        addLegend("bottomleft", colors=c("#67a9cf", "#ef8a62"), labels=c("Public Water Systems in County", "Selected Public Water System"))
+      })
+
+      
+  observe({     
+     map <- leafletProxy("map") %>%
+       clearMarkers() %>%
+       addAwesomeMarkers(data=points(),lng=~Longitude, lat=~Latitude, icon=icons(), popup=~paste("Name:", as.character(WSF.Name),"<br>", 
+                                                                                                        "Source Availability:", 
+                                                                                                        as.character(Availability), "<br>", 
+                                                                                                        "Water Source Facility Type:", 
+                                                                                                        as.character(WSF.Type), "<br>",
+                                                                                                        "Water Source Status:",
+                                                                                                        as.character(STATUS))) %>%
+       addControl(html = markerLegendHTML(IconSet = IconSet), position = "bottomright")
+     
+
+    })
 }
-
-
-shinyApp(ui, server)
+# Run the application 
+shinyApp(ui = ui, server = server)
