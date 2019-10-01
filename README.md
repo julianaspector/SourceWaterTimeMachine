@@ -48,4 +48,4 @@ runGitHub("SourceWaterTimeMachine", "julianaspector")
 ```
 
 ### Acknowledgements
-Thanks to SWRCB staff (Dori Bellan, Rafa Maestu, and Jen-Ann Lee) who provided direction for compiling the necessary data. Also thanks to the datathon team at the 2019 Water Data Science Symposium whose fruitful discussion helped inspire many ideas for the app. 
+Thanks to SWRCB staff (Dori Bellan, Rafa Maestu, and Jen-Ann Lee) who provided helpful direction for compiling the necessary data. Also thanks to the datathon team at the 2019 Water Data Science Symposium whose fruitful discussion helped inspire many ideas for the app. 
