@@ -38,7 +38,7 @@ Unknown | Unknown
 ### Production and Delivery Information
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal] (https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
 
-### Instructions to run the app from RStudio and GitHub
+### Instructions to run app from RStudio and GitHub
 In an R Studio (Version 1.2.5001, R 3.5.1) session, install the [shiny](https://github.com/rstudio/shiny) package and run the following commands:
 
 ```
