@@ -9,9 +9,6 @@ library(scales)
 library(spatstat)
 library(tidyr)
 
-
-setwd("C:/Users/Jules/Desktop/Source Water Time Machine")
-
 # Get dataset (public water system service areas) from shapefile
 serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
