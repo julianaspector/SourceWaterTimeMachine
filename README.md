@@ -46,3 +46,4 @@ library(shiny)
 runGitHub("SourceWaterTimeMachine", "julianaspector")
 
 ```
+The app is also hosted online at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
