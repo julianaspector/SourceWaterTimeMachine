@@ -10,18 +10,16 @@ library(spatstat)
 library(tidyr)
 
 
-setwd("C:/Users/JSpector/Documents/Source Water Time Machine")
-
-# Get dataset (public water system service areas) from shapefile
+# Get public water system service areas from shapefile
 serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
 
-# Get source point data from CSV
+# Get source point data
 sourcePoints <- read.csv("20190619 DDW Source Points.csv")
 sourcePoints$join_ID <- paste0(sourcePoints$PWS.ID,"-",sourcePoints$State.Asgn.ID)
 sourcePoints$join_ID <- gsub('[CA]', '', sourcePoints$join_ID)
 sourcePoints %>% mutate_at("join_ID", as.character())
 
-# Get additional source point status and type location from EDF library CSV
+# Get additional source point status and type location from EDF library
 add_sourcePoints <- read.csv("sitelocations_20190915.csv")
 
 # join source point information
@@ -48,7 +46,7 @@ counties <- sort(counties)
 water_type_keys <- read.csv("Water_Facility_Types.csv")
 availability_keys <- read.csv("Availability.csv")
 
-
+# create levels based on source water operation statuses
 abandoned <- sourcePoints %>%
   filter(STATUS =='AB')
 abandoned$Level <- "Abandoned"
@@ -102,6 +100,7 @@ unknown$Color <- "pink"
 
 sourcePoints <- rbind(abandoned, destroyed, inactive, standby, active, agriculture, distribution, combined, purchased, unknown)
 
+# hide columns
 sourcePoints <- select(sourcePoints, -c(PWS.Type,
                                         Activity.Status,
                                         Activity.Status2,
