@@ -10,7 +10,7 @@ library(spatstat)
 library(tidyr)
 
 
-setwd("C:/Users/JSpector/Documents/Source Water Time Machine")
+setwd("C:/Users/Jules/Desktop/Source Water Time Machine")
 
 # Get dataset (public water system service areas) from shapefile
 serviceAreas <- read_sf(dsn="Service_Areas_2019_09_25/service_areas.shp",layer="service_areas")
@@ -47,6 +47,7 @@ counties <- sort(counties)
 # Bring in source point key values
 water_type_keys <- read.csv("Water_Facility_Types.csv")
 availability_keys <- read.csv("Availability.csv")
+status_keys <- read.csv("status_table.csv")
 
 
 abandoned <- sourcePoints %>%
@@ -207,8 +208,9 @@ ui<-fluidPage(
                br(),
                br(),
                fluidRow(
-                 column(6, offset=1, tableOutput('tbl_types')),
-                 column(6, offset=1, tableOutput('tbl_availability'))
+                 column(4, offset=1, tableOutput('tbl_types')),
+                 column(4, offset=1, tableOutput('tbl_availability')),
+                 column(4, offset=1, tableOutput('tbl_status'))
                ),
                br(),
                tags$b("Data Sources:"),
@@ -273,9 +275,14 @@ server<- function(input, output, session){
     # show facilties key
     output$tbl_types <- renderTable({
       head(water_type_keys, n = 2)}, bordered=TRUE)
+    # show status key
+    output$tbl_status <- renderTable({
+      head(status_keys, n=10)}, bordered=TRUE)
+    
     # this creates a table of records for select PWSID
     output$table_select <- renderTable({
-      subset(sourcePoints, PWS.ID==input$pwsid)})
+    table <- select(sourcePoints, -c("Color", "Latitude", "Longitude", "SYSTEM_NO"))
+      subset(table, PWS.ID==input$pwsid)})
     # allows user to select a date along slider between 2013-2016
     sliderMonth <- reactiveValues()
     observe({
