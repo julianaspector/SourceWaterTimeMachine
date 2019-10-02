@@ -46,4 +46,7 @@ library(shiny)
 runGitHub("SourceWaterTimeMachine", "julianaspector")
 
 ```
-The app is also hosted online at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
+The app is also hosted online via shinyapps.io at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
+
+###Acknowledgements
+Thanks to SWRCB staff (Dori Bellan, Rafa Maestu, and Jen-Ann Lee) who provided helpful direction for compiling the necessary data. Also thanks to the datathon team at the 2019 Water Data Science Symposium whose fruitful discussion helped inspire many ideas for the app.
