@@ -26,14 +26,16 @@ Status | Code
 --- | ---
 Abandoned | AB
 Destroyed | DS
-Inactive | IR
-Standby | SR
-Active | AR
+Inactive | IR/IU/IT
+Standby | SR/SU/ST
+Active | AR/AU/AT
 Agriculture/Irrigation | AG
-Distribution | DT
-Combined | CT
-Purchased | PT
+Distribution | DT/DR
+Combined | CR/CU/CT/CM
+Purchased | PR/PU/PT
 Unknown | Unknown
+
+For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 
 ### Production and Delivery Information
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal](https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
