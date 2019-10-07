@@ -209,6 +209,8 @@ ui<-fluidPage(
                fluidRow(
                  column(12, tableOutput('tbl_status'))
                ),
+               "For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed",
+               br(),
                br(),
                tags$b("Data Sources:"),
                br(),
@@ -222,7 +224,11 @@ ui<-fluidPage(
                "Electronic Annual Report, Safe Drinking Water Information System. Accessed 7/2/2019 from https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information",
                br(),
                br(),
-               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water"
+               "Tracking California, Public Health Institute. Water Boundary Tool. Accessed 9/25/2019 from https://www.trackingcalifornia.water",
+               tags$head(tags$style(
+                 type = 'text/css',
+                 'form.well { max-height: 600px; overflow-y: auto; }'
+               ))
                
   ),
   mainPanel(
