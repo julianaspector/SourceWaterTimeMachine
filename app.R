@@ -197,7 +197,7 @@ ui<-fluidPage(
                br(),
                "3) Select a Public Water System ID of interest.",
                br(),
-               "4) Click on pins to see name of water source(s), water source availability, and water source facility type. The same information is available in tabular format in the Table tab.",
+               "4) Click on pins to see name of water source(s), water source availability, facility type, and status. The same information is available in tabular format in the Table tab.",
                br(),
                "5) The Graphs tab shows how the water source composition (relative fractions of groundwater, surface water, and delivered water) changed between 2013-2016.",
                br(),
