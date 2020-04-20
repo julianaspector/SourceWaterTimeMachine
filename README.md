@@ -15,7 +15,7 @@ Permanent | P
 Seasonal | S
 
 <figure>
-  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Map.png" alt="Map">
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Map.png">
   <figcaption>Reported source water points for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
 
@@ -43,7 +43,7 @@ Unknown | Unknown
 For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 
 <figure>
-  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png" alt="Map">
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png">
   <figcaption>Table of source water information for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
 
@@ -51,7 +51,7 @@ For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal](https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
 
 <figure>
-  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Graphs.png" alt="Map">
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Graphs.png">
   <figcaption>Pie chart of source water relative fraction composition for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
 
