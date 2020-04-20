@@ -16,10 +16,8 @@ Seasonal | S
 
 <figure>
   <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Map.png" alt="Map">
-  <figcaption>Fig.1 - Trulli, Puglia, Italy.</figcaption>
+  <figcaption>Reported source water points for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
-
-<img src= height="500">
 
 ### PWS Boundaries
 PWS boundaries were obtained from the [Water Boundary Tool](https://trackingcalifornia.org/water). As of September 25, 2019, boundaries for 5,529 PWS were available in the tool. To download this data in KML, CSV, Shapefile, or GeoJSON format, you can go to this [link](https://trackingcalifornia.org/water/login) and create an account. 
@@ -45,14 +43,18 @@ Unknown | Unknown
 For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 
 <figure>
-  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png" height="500">
-  <figcaption>Interactive map showing all reported source water points for Public Water System CA1010007 in Fresno County.</figcaption>
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png" alt="Map">
+  <figcaption>Table of source water information for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
 
 ### Production and Delivery Information
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal](https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
 
-<img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Graphs.png" height="500">
+<figure>
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Graphs.png" alt="Map">
+  <figcaption>Graphs of source water relative fraction composition for public water system CA1010007 in Fresno County.</figcaption>
+</figure>
+
 
 ### Accessing the app
 The app is hosted online via shinyapps.io at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
