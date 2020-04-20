@@ -52,7 +52,7 @@ PWS submit their annual inventory information using the Electronic Annual Report
 
 <figure>
   <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Graphs.png" alt="Map">
-  <figcaption>Graphs of source water relative fraction composition for public water system CA1010007 in Fresno County.</figcaption>
+  <figcaption>Pie chart of source water relative fraction composition for public water system CA1010007 in Fresno County.</figcaption>
 </figure>
 
 
