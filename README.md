@@ -39,7 +39,10 @@ Unknown | Unknown
 
 For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 
-<img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png" height="500">
+<figure>
+  <img src="https://github.com/julianaspector/SourceWaterTimeMachine/blob/master/Images/Table.png" height="500">
+  <figcaption>Interactive map showing all reported source water points for Public Water System CA1010007 in Fresno County.</figcaption>
+</figure>
 
 ### Production and Delivery Information
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal](https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
