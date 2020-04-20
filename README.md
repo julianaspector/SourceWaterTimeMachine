@@ -40,15 +40,8 @@ For second letter of code: R=Raw, U=Untreated, T=Treated, M=Mixed
 ### Production and Delivery Information
 PWS submit their annual inventory information using the Electronic Annual Report (EAR) submission process on the Drinking Water Information Clearinghouse (DRINC) portal, which is reviewed, and manually updated into the Safe Drinking Water Information System (SDWIS). This is self-reported by PWS. The produced and delivered water reporting data for 2013-2016 is available on the [California Open Data Portal](https://data.ca.gov/dataset/drinking-water-public-water-system-annually-reported-water-production-and-delivery-information). 
 
-### Instructions to run app from RStudio and GitHub
-In an R Studio session (known to be working with Version 1.2.5001, R 3.5.1), install the [shiny](https://github.com/rstudio/shiny) package and run the following commands:
-
-```
-library(shiny)
-runGitHub("SourceWaterTimeMachine", "julianaspector")
-
-```
-The app is also hosted online via shinyapps.io at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
+### Accessing the app
+The app is hosted online via shinyapps.io at this [link](https://jjspector.shinyapps.io/source_water_time_machine/).
 
 ### Acknowledgements
 Thanks to SWRCB staff (Dori Bellan, Rafa Maestu, and Jen-Ann Lee) who provided helpful direction for compiling the necessary data. Also thanks to the datathon team at the 2019 Water Data Science Symposium whose fruitful discussion helped inspire many ideas for the app.
